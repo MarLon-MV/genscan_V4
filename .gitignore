@@ -1,0 +1,18 @@
+.venv/
+.venv-*/
+__pycache__/
+*.pyc
+logs/
+pdfs/
+pdf_done/
+pdf_controle/
+pdf_fout/
+resultaten/
+test_output/
+# backend
+.env
+config
+gsw.lock
+*.db
+werkmap/
+.DS_Store

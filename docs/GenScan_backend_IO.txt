@@ -1,0 +1,113 @@
+GENSCAN BACKEND ORIGINAL (sin IA) - RESUMEN DE ENTRADAS Y SALIDAS
+====================================================================
+
+FLUJO
+  gsw.py repite: prep -> downloads -> uploads
+  prep      : baja divisiones de WordPress y crea carpetas
+  uploads   : lee escaneos, extrae datos (OCR + regex) y sube a WordPress
+  downloads : baja posts revisados, renombra el original, actualiza Excel indice
+
+
+ENTRADAS
+--------------------------------------------------------------------
+Documentos escaneados : .pdf, .jpg, .jpeg
+                        en <working_folder>/divisions/<_slug>/
+                        (se ignoran _ignore, _corrupt, _failed)
+Ruta del archivo      : string. De ahi salen tipo (bidprentje=bp,
+                        overlijdensbericht=ob, krantenbericht=kb,
+                        krantenoverlijdensbericht=ko, por defecto rb),
+                        division (\_slug\), caja (doos ###) y
+                        nº de documento (7 digitos)
+Nombre del archivo    : string, parseado con plantillas regex de la
+                        tabla templates (apellido, nombre, fechas, lugares)
+config                : INI (WORDPRESS, PROCESS, FOLDERS, FILES, IMAGES)
+.env                  : WP_USER y WP_API (auth Basic con WordPress)
+CLI                   : -w carpeta de trabajo, -l nivel de log
+WordPress (descarga)  : JSON REST API
+                        GET /wp-json/wp/v2/rouwberichten?status=publish
+                            &verwerkingsstatus=Verwerkt
+                        datos dentro del objeto "acf"
+API custom            : JSON /wp-json/custom/v1/system-status
+                        (disk_used_mb, db_used_mb)
+
+Transformaciones internas
+  PDF -> imagenes PIL   : pdf2image, 200 dpi, 3000 px
+  Texto embebido        : PyPDF2 (si el PDF lo tiene)
+  Imagen web            : paginas concatenadas, max 1800 px,
+                          marca de agua opcional, borde 10 px
+  Imagen OCR            : paginas apiladas en vertical
+  OCR                   : Tesseract nld+fra, --psm 1 (dict image_to_data)
+  Nombre                : palabras mas altas del OCR (get_name)
+  Fechas y lugares      : regex sobre texto normalizado (_geboren/_overleden)
+  Genero                : busqueda del primer nombre en tabla first_names
+  Foto                  : OpenCV Haar cascade, minimo 300x300
+  Nota                  : regex Oud-strijder / krijgsgevangene / weggevoerde
+
+
+SALIDAS
+--------------------------------------------------------------------
+Imagen temporal       : .webp (calidad 80), en uploads_folder;
+                        se sube y se borra
+Media en WordPress    : POST /wp/v2/media (multipart) -> id (featured_media)
+Post en WordPress     : POST /wp/v2/rouwberichten (JSON, ver campos abajo)
+Archivo original      : PDF/JPG movido a processed/<id>.<ext>;
+                        luego renamed/<tipo>/<nuevo_nombre>
+                        o review/ si el post tiene flag "nazicht"
+Nuevo nombre          : string + extension original, segun plantilla
+                        "write" de la division ({fn},{ln},{by},{dp}...)
+Excel indice          : .xlsx (_Index_<carpeta>.xlsx), una fila por
+                        documento si la division tiene export
+Base de datos         : SQLite gsw.db (documents, divisions, templates,
+                        first_names, cities)
+Logs                  : gsw.log + timers en estilo CSV
+
+
+CAMPOS DEL POST (JSON, valores dentro de "acf")
+--------------------------------------------------------------------
+title                      string (obituary_id)
+content                    string (texto OCR, sin emojis)
+featured_media             id de la media
+type_overlijdensbericht    RB | BP | OB | KB | KO
+voornaam / familienaam     string
+gender                     M | V | None
+geboorteplaats             string
+geboortedatum              {geboortejaar, geboortemaand, geboortedag}
+overlijdensplaats          string
+overlijdensdatum           {overlijdensjaar, overlijdensmaand, overlijdensdag}
+foto                       bool
+nota                       string
+doos / document_nummer     string
+afdeling                   int (id division)
+afdeling_fv_alternatief    string (slug)
+verwerkingsstatus          "Nieuw"
+originele_bestandsnaam     string
+originele_folder           string (\ cambiado a /)
+prioriteit                 int
+
+
+COLUMNAS DEL EXCEL INDICE
+--------------------------------------------------------------------
+Soort bericht, Bestandsnaam, Voornaam, Achternaam, Geslacht, Foto (X),
+Geboortedatum (dd-mm-yyyy), Geboorteplaats, Datum overlijden,
+Overlijdensplaats, Opmerkingen
+(columnas Partner... existen pero el backend las deja vacias)
+
+
+NOTAS
+--------------------------------------------------------------------
+- Tipos de fecha inconsistentes: Obituary inicia ""; validate_* devuelve
+  numero o None; create_new_file_name espera int.
+- Regex de ruta (caja, documento, division) usan "\" -> solo Windows;
+  en macOS division_slug no se asigna.
+- gsw.db: divisions y templates vacias; solo 17179 nombres y 3092 ciudades.
+- Baseline existente: resultados/20261011_012636/extraccion_tesseract.csv
+
+
+DIFERENCIAS CON LA INTEGRACION IA (a completar tras la prueba contra WordPress local)
+--------------------------------------------------------------------
+- Con [AI] enabled=true no se usa Tesseract (extract_ocr_data, get_name,
+  find_life_info); lo hace ai_extractor (RapidOCR + Ollama).
+- Campos adivinados por la IA: no se suben (upload_guesses=false).
+- Ollama caido: se salta el ciclo de uploads, no se para el programa.
+- Documento que falla N veces (max_failures): se mueve a _failed.
+- Regex de ruta: soportan / y \ (ya no solo Windows).

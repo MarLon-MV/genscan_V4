@@ -1,0 +1,28 @@
+# Python 3.11 or newer (datetime.UTC is used)
+
+# --- AI extraction (ai_extractor) ---
+requests
+numpy
+# OpenCV 5 removed CascadeClassifier (face detection in has_face)
+opencv-python<5
+opencv-python-headless<5
+pymupdf
+rapidocr
+onnxruntime
+
+# --- WordPress backend (gsw.py, gs_*.py) ---
+beautifulsoup4
+codetiming
+colorama
+emoji
+openpyxl
+pandas
+pdf2image
+pillow
+pycryptodome
+pypdf2
+pypdfium2
+pytesseract
+python-dotenv
+readchar
+sqlalchemy

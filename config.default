@@ -1,0 +1,110 @@
+# This config file keeps track of some modifiable parameters.
+# The commented lines represent default settings.
+# Copy the default rem'd line, change and unrem it.
+# Some, if defined here, will override the command line arguments.
+# Do not use quotes or single quotes around values
+[WORDPRESS]
+# REQUIRED! Set the wordpress site URL, credentials are set in environment variables
+site = your_site_URL_here
+
+# Maximum wordpress disk usage allowed in MB, used to prevent site overload
+;max_disk_used = 50000
+
+# Maximum wordpress database usage allowed in MB, used to prevent site overload
+;max_db_used = 400
+
+# Maximum number of documents available per division, used to prevent site overload
+;max_uploads = 20
+
+# Familiekunde afdeling/regio als bron van opladen
+;division = Genscan
+
+[PROCESS]
+# Run one time (true) or loop continuously (false)
+# true or false, 0 or 1
+;run_once = true
+
+# Sleep timer between looped runs in seconds
+;sleep = 600
+
+# Maximum uploads per division in one cycle
+;max_per_cycle = 50
+
+# Run upload, download or both (default) per cycle
+;run_action = both
+
+[FOLDERS]
+# REQUIRED! Set working folder, overrides command line -w parameter
+working_folder = add_full_local_path_here
+
+# set log level, overrides command line -l parameter
+;loglevel = INFO
+
+# rename folders in root working folder, these are used by the whole process
+;debug_folder = debug
+;logs_folder = logs
+;uploads_folder = uploads
+;failed_folder = failed
+;divisions_folder = divisions
+
+# rename folders used during file processing, these are created in 
+#   the same folder where the first document to process is found
+;processed_folder = processed
+;renamed_folder = renamed
+;review_folder = review
+
+[FILES]
+# Overwrite duplicate files
+# If false, the filename of a duplicate file will be appended with _<number>
+# If true, existing file will be overwritten
+#  can be 1|0, true|false, yes|no, on|off
+;file_overwrite = false
+
+# Final file name modifications
+# Replace spaces in file name with other character(s)
+# Default leaves space as is
+;replace_space = <your character(s)>
+
+[IMAGES]
+# Watermark the images
+#  can be 1|0, true|false, yes|no, on|off
+;watermark = true
+
+# Adjust text to show in watermark, default is [WORDPRESS][division]
+#   limited to 19 characters
+;watermark_text = Genscan
+
+# Minimum dimensions (h x w), in pixels, an image must be to get processed.
+# Anything not within these dimensions is moved to the corrupt folder.
+;minimum_size = 300
+
+# Save images to pdf 
+#  can be 1|0, true|false, yes|no, on|off
+;save_to_pdf = false
+
+# Keep original image after saving as PDF
+#  can be 1|0, true|false, yes|no, on|off
+# Only effective if save_to_pdf = True
+;keep_original = false
+[AI]
+# Use the AI (RapidOCR + vision model in Ollama) instead of Tesseract + regex
+# for name, dates and places. false = old Tesseract behaviour.
+#  can be 1|0, true|false, yes|no, on|off
+;enabled = true
+
+# Ollama model and address (Ollama must be running: ollama serve)
+;model = qwen2.5vl:3b
+;ollama_url = http://localhost:11434
+
+# Maximum number of pages of a document that are analysed
+;max_pages = 2
+
+# Upload fields the model had to guess (best estimate, may be wrong).
+# false = leave them empty for the volunteers, as the old backend did.
+;upload_guesses = false
+
+# Save the full AI result per document in <logs>/ai/<id>.json
+;save_json = true
+
+# After this many failed AI analyses, a document is moved to _failed
+;max_failures = 3
