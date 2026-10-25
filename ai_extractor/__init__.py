@@ -9,7 +9,6 @@ The backend (gs_ai_tools.py) uses analyseer_afbeeldingen().
 from .config import (  # noqa: F401
     MODEL,
     OUTPUT_DIR,
-    PDF_CONTROLE_DIR,
     configureer,
     stel_logging_in,
 )
@@ -31,5 +30,4 @@ __all__ = [
     "stel_logging_in",
     "MODEL",
     "OUTPUT_DIR",
-    "PDF_CONTROLE_DIR",
 ]

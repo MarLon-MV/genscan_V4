@@ -2,11 +2,14 @@
 Test a single PDF without moving or renaming anything.
 
 Usage:
-    python test_pdf.py pdfs\test.pdf
-The result goes to test_output\resultaat.json.
+    python tools/test_pdf.py scan.pdf
+The result goes to test_output/resultaat.json.
 """
 
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pymupdf
 

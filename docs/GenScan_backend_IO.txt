@@ -111,3 +111,4 @@ DIFERENCIAS CON LA INTEGRACION IA (a completar tras la prueba contra WordPress l
 - Ollama caido: se salta el ciclo de uploads, no se para el programa.
 - Documento que falla N veces (max_failures): se mueve a _failed.
 - Regex de ruta: soportan / y \ (ya no solo Windows).
+- Nombre por defecto sin plantilla 'write': apellido_nombre_nacimiento_fallecimiento (create_default_file_name).

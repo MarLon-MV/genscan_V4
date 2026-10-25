@@ -1,14 +1,9 @@
 """Tests for the AI result -> Obituary mapping (gs_ai_tools.apply_ai_result)."""
 
-import os
-import sys
+import pytest
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-import pytest  # noqa: E402
-
-import gs_ai_tools  # noqa: E402
-from gs_classes import Obituary  # noqa: E402
+import gs_ai_tools
+from gs_classes import Obituary
 
 
 @pytest.fixture
@@ -52,3 +47,28 @@ def test_guessed_fields_are_not_uploaded_by_default(obituary):
     assert obituary.first_name == ""
     gs_ai_tools.apply_ai_result(obituary, result, upload_guesses=True)
     assert obituary.first_name == "Jan"
+
+
+class _Post:
+    file_name = "RB_ANZEGEM-R0005.pdf"
+    last_name = "ARDENOIS"
+    first_name = "Joseph (Jos)"
+    birth_year, birth_month, birth_day = 1923, 2, 6
+    death_year, death_month, death_day = 2002, None, None
+
+
+def test_default_file_name_format():
+    from gs_helpers import create_default_file_name
+
+    post = create_default_file_name(_Post())
+    assert post.new_file_name == "ARDENOIS_Joseph_1923-02-06_2002.pdf"
+
+
+def test_default_file_name_unknown_parts():
+    from gs_helpers import create_default_file_name
+
+    post = _Post()
+    post.first_name, post.birth_year = "", None
+    assert create_default_file_name(post).new_file_name == (
+        "ARDENOIS_onbekend_onbekend_2002.pdf"
+    )

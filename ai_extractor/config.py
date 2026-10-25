@@ -25,10 +25,6 @@ MAX_AFBEELDING_ZIJDE = 1280
 OUTPUT_DIR = Path("test_output")
 LOG_DIR = Path("logs")
 
-# PDFs where the model had to guess or data is missing end up
-# here so you can check them manually (set by main.py).
-PDF_CONTROLE_DIR = Path("pdf_controle")
-
 # Named logger for the whole package (ai_extractor.*). It does not touch
 # the root logger, so it does not interfere with the gsw_logger of the
 # backend.

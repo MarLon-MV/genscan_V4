@@ -26,11 +26,11 @@
   face, note, gender, priority, upload              (unchanged)
 ```
 
-## Backend modules (original, `gs_*.py`)
+## Backend modules (original, `backend/gs_*.py`)
 
 | Module | Role |
 |---|---|
-| `gsw.py` | entry point, lock file, main loop |
+| `gsw.py` (project root) | entry point, lock file, main loop |
 | `gs_args.py`, `gs_config.py` | CLI arguments and `config` file -> `APP_CONFIG` |
 | `gs_processor.py` | the three phases: prep, downloads, uploads |
 | `gs_wp_tools.py` | WordPress REST client (auth from `.env`) |
@@ -68,7 +68,7 @@
 
 | Module | Role |
 |---|---|
-| `pipeline.py` | `analyseer_afbeeldingen()` (backend), `analyseer_pagina()` (standalone) |
+| `pipeline.py` | `analyseer_afbeeldingen()` (backend), `analyseer_pagina()` (`tools/test_pdf.py`) |
 | `ocr.py` | PDF render (PyMuPDF), RapidOCR, text crop |
 | `ollama_client.py` | chat call, `controleer_ollama()` |
 | `prompts.py` | all model prompts |
@@ -86,7 +86,7 @@ missing fields -> guess round (flagged in `gegokt_velden`) -> validation.
 - Guessed fields are not uploaded by default (WordPress has no review flag).
 - An unreachable Ollama stops the *cycle*, not the program.
 - `ai_extractor` has no dependency on `gs_*`, so it can be used and tested alone
-  (`main.py`, `test_pdf.py`).
+  (`tools/test_pdf.py`).
 
 ## Known differences with the original
 

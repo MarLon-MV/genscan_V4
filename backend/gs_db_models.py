@@ -17,10 +17,12 @@ from sqlalchemy import (
 from sqlalchemy.orm import DeclarativeBase, Mapped, Relationship, mapped_column
 
 # Database file: GSW_DB in .env (default gsw.db). A relative path is taken
-# from the folder of this script, so it works from any working directory.
+# from the project folder (parent of backend/), so it works from any working directory.
 _DB_PATH = os.getenv("GSW_DB", "gsw.db")
 if not os.path.isabs(_DB_PATH):
-    _DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), _DB_PATH)
+    _DB_PATH = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), _DB_PATH
+    )
 
 engine = create_engine(f"sqlite:///{_DB_PATH}", echo=False)
 # engine = create_engine("sqlite:///gsw.db", echo=True)

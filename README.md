@@ -72,6 +72,12 @@ estimate and lists it in `gegokt_velden`. WordPress has no field for "check
 this", so by default (`upload_guesses = false`) guesses are *not* uploaded and
 the field stays empty for the volunteers, as with the old backend.
 
+**File names.** In the download step reviewed originals are renamed to
+`lastname_firstname_birthdate_deathdate.<ext>` (e.g.
+`ARDENOIS_Joseph_1923-02-06_2002-11-20.pdf`; unknown parts are `onbekend`).
+A division with its own `write` template in the `templates` table keeps using
+that template; this format is the default when there is none.
+
 **Ollama down.** Ollama is checked once at the start of every upload cycle.
 If it does not answer, that cycle's uploads are skipped and retried next
 cycle; documents stay where they are. A document that fails on its own
@@ -89,13 +95,29 @@ Per document, in `gs_processor.process_uploads`:
 
 Details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## Standalone AI tools (development)
+## Project structure
 
-Without WordPress, the AI can be tried on single files:
+```
+gsw.py                 entry point (prep -> downloads -> uploads loop)
+check_setup.py         pre-flight check before running gsw.py
+config.default         configuration template   -> copy to `config`
+.env.example           credentials template     -> copy to `.env`
+requirements*.txt      dependencies (-dev adds pytest)
+backend/               the original backend (gs_*.py): WordPress, files, DB, Excel
+  gs_ai_tools.py       the bridge to the AI (the only AI-aware backend module)
+ai_extractor/          RapidOCR + Ollama extraction (independent of backend/)
+tools/test_pdf.py      try the AI on one PDF, no WordPress needed
+tests/                 pytest
+docs/                  ARCHITECTURE.md, GenScan_backend_IO.txt
+```
+
+Runtime folders (`werkmap/`, `logs/`, `*.db`, `.env`, `config`) are created
+locally and ignored by git.
+
+## Trying the AI on a single file (development)
 
 ```bash
-python test_pdf.py pdfs/test.pdf      # result in test_output/resultaat.json
-python main.py --eenmalig             # pdfs/ -> pdf_done/ | pdf_controle/ | pdf_fout/
+python tools/test_pdf.py scan.pdf     # result in test_output/resultaat.json
 ```
 
 Handy to tune prompts; not part of the production flow.
@@ -117,7 +139,6 @@ python -m pytest tests
 | Application passwords refused over HTTP | local WordPress needs `WP_ENVIRONMENT_TYPE=local` |
 | `No module named ...` | venv not active; `python -m pip install -r requirements.txt` |
 | Slow (minutes per document) | CPU only; use a GPU or a smaller `max_pages` |
-| macOS: file name not parsed | division/box/document number are read from the path; both `/` and `\` are supported |
 
 Logs: `<working_folder>/logs/gsw.log` and `ai_extractor.log`.
 

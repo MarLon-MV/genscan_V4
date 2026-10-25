@@ -1,18 +1,19 @@
+# environment
 .venv/
 .venv-*/
 __pycache__/
 *.pyc
-logs/
-pdfs/
-pdf_done/
-pdf_controle/
-pdf_fout/
-resultaten/
-test_output/
-# backend
+.pytest_cache/
+.DS_Store
+.vscode/
+
+# secrets and local settings
 .env
 config
-gsw.lock
+
+# runtime data (scans contain personal data)
 *.db
+gsw.lock
 werkmap/
-.DS_Store
+logs/
+test_output/

@@ -18,7 +18,7 @@ site (`http://localhost:8080`) with its own application password.
 1. Branch from `integracion-ia` (or `main`): `git switch -c feature/<short-name>`.
 2. Keep changes small and focused; one concern per commit.
 3. Add or update a test in `tests/` for logic you change (the AI -> `Obituary`
-   mapping in `gs_ai_tools.py` is covered by `tests/test_ai_mapping.py`).
+   mapping in `backend/gs_ai_tools.py` is covered by `tests/test_ai_mapping.py`).
 4. Run `python -m pytest tests` and `python check_setup.py` before opening a
    pull request.
 5. Describe in the PR what changes in the **WordPress output** (post fields,
@@ -27,7 +27,7 @@ site (`http://localhost:8080`) with its own application password.
 
 ## Code rules
 
-- The old backend (`gsw.py`, `gs_*.py`) stays in charge of the flow. The AI
+- The old backend (`gsw.py`, `backend/gs_*.py`) stays in charge of the flow. The AI
   only replaces Tesseract + regex; do not move other logic into
   `ai_extractor/`.
 - `ai_extractor/` imports nothing from `gs_*`. The backend talks to it only
@@ -45,6 +45,6 @@ site (`http://localhost:8080`) with its own application password.
 ## Prompts
 
 Model instructions are in `ai_extractor/prompts.py`. After changing them,
-run the fixed test set (`voorbeelden/` and `pdf_controle/`) through
-`test_pdf.py` and compare with the baseline
-`resultados/20261011_012636/extraccion_tesseract.csv`.
+run the fixed test set (the same PDFs every time) through
+`tools/test_pdf.py` and compare with the baseline
+the Tesseract baseline CSV.
