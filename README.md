@@ -1,153 +1,177 @@
-# genscan2
+# GenScan
 
-GenScan reads scanned memorial cards and death notices (PDF/JPG), extracts
-name, dates and places, uploads them to WordPress as `rouwberichten` posts
-and later renames the originals once volunteers have reviewed the posts.
+GenScan reads scanned memorial cards and death notices, extracts who the
+deceased is (name, birth and death dates and places), and publishes the result
+to WordPress for volunteers to review.
 
-This project is the **original GenScan backend (`gsw.py`) with the AI
-extraction plugged in**. The old Tesseract + regex step is replaced by
-RapidOCR + a local vision model (Ollama). Everything else (inputs, outputs,
-WordPress upload, Excel index, database) is the old code, so the inputs and
-outputs are the same. See [docs/GenScan_backend_IO.txt](docs/GenScan_backend_IO.txt).
+It is the original GenScan backend with one change: the old Tesseract + regex
+text recognition is replaced by **RapidOCR + a local vision model (Ollama)**.
+Everything else (WordPress upload, file renaming, Excel index, database) is the
+old code, so inputs and outputs stay the same. Everything runs on your own
+machine; only WordPress receives data.
 
-Everything runs locally; only WordPress receives data.
+## What it does
 
-## Quick start
+```text
+scans in divisions/<_slug>/        1. UPLOAD     read the scan with the AI,
+  (.pdf .jpg .jpeg)          ───►                 create a post in WordPress
+                                                        │
+                                                        ▼
+                                                 volunteers review the post
+                                                 and mark it "Verwerkt"
+                                                        │
+renamed/<type>/<new name>    ◄───  2. DOWNLOAD   fetch reviewed posts, rename the
+Excel index, database                             original, update the Excel index
+```
 
-Requirements: **Python 3.11+**, [Ollama](https://ollama.com), a GPU
-(recommended), ~6 GB disk for the model.
+`gsw.py` repeats `prep → downloads → uploads` in a loop. `prep` first syncs the
+divisions from WordPress and creates their folders.
+
+A reviewed original is renamed to
+`lastname_firstname_birthdate_deathdate.<ext>`, e.g.
+`ARDENOIS_Joseph_1923-02-06_2002-11-20.pdf` (unknown parts are `onbekend`). A
+division with its own `write` template in the database keeps using it.
+
+## Requirements
+
+- Python **3.11 or newer**
+- [Ollama](https://ollama.com), installed and running
+- A WordPress site with the `rouwberichten` post type and the
+  `/wp-json/custom/v1/system-status` endpoint (or the local Docker copy)
+- A GPU is strongly recommended. On CPU a document takes several minutes.
+- About 6 GB of disk for the model
+
+## Setup
+
+### 1. Install
 
 ```bash
 git clone <this repository> && cd genscan2
-python3 -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
+python3 -m venv .venv
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
 python -m pip install -r requirements.txt
-
-ollama pull qwen2.5vl:3b                               # the model in config
-
-cp config.default config                               # then edit (see below)
-cp .env.example .env                                   # then edit (see below)
-cp gsw.db gsw.local.db                                 # work on a COPY, never on gsw.db
-
-python check_setup.py                                  # pre-flight check
-python gsw.py -w ./werkmap -l DEBUG                    # run
+ollama pull qwen2.5vl:3b
 ```
 
-1. **`config`**: set `[WORDPRESS] site` and `[FOLDERS] working_folder`
-   (absolute path). Local Docker site: `http://localhost:8080`.
-2. **`.env`**: `WP_USER`, `WP_API` (a WordPress *application password*;
-   for the local site create a local one in wp-admin) and
-   `GSW_DB=gsw.local.db`.
-3. Put scans in `<working_folder>/divisions/<_slug>/`
-   (`.pdf`, `.jpg`, `.jpeg`; folders `_ignore`, `_corrupt`, `_failed` are skipped).
-4. Make sure Ollama is running (`ollama serve`).
+### 2. Create your local settings
 
-`gsw.py` is a REST **client**: it opens no port and needs no CORS. It
-repeats `prep -> downloads -> uploads` until stopped (`run_once = true` in
-`config` runs a single cycle).
+Both files are ignored by git.
 
-### Pre-flight check
+```bash
+cp config.default config
+cp .env.example .env
+cp gsw.db gsw.local.db               # always work on a copy of the database
+```
 
-`python check_setup.py` verifies Python version, `.env` credentials, Ollama
-and model, the `system-status` endpoint, the `rouwberichten` post type, the
-working folder and that `GSW_DB` is not the production `gsw.db`. If
-`system-status` does not answer, the backend skips **all** documents without
-raising an error, so run this first.
+### 3. Fill them in
+
+| File | Setting | Value |
+|---|---|---|
+| `config` | `[WORDPRESS] site` | your site, e.g. `http://localhost:8080` |
+| `config` | `[FOLDERS] working_folder` | absolute path to a work folder, e.g. `./werkmap` |
+| `.env` | `WP_USER` | WordPress API user |
+| `.env` | `WP_API` | a WordPress **application password** (24 characters, not the login password) |
+| `.env` | `GSW_DB` | `gsw.local.db` |
+
+### 4. Check everything before the first run
+
+```bash
+python check_setup.py
+```
+
+It verifies Python, credentials, Ollama and the model, the WordPress endpoints,
+the work folder, and that you are not pointing at the production `gsw.db`. Fix
+every `FAIL` first: if the `system-status` endpoint does not answer, the backend
+silently skips all documents.
+
+## Run
+
+1. Start Ollama (`ollama serve`, or open the Ollama app).
+2. Put scans in `<working_folder>/divisions/<_slug>/`. Run once first so `prep`
+   creates the division folders.
+3. Start:
+
+```bash
+python gsw.py -w ./werkmap -l DEBUG
+```
+
+Stop with `Ctrl+C`. With `run_once = true` in `config` it runs a single cycle.
+
+Logs: `<working_folder>/logs/gsw.log` and `ai_extractor.log`. The full AI result
+per document is in `<working_folder>/logs/ai/<id>.json`.
 
 ## Configuration
 
-`config.default` documents every option. The `[AI]` section:
+`config.default` documents every option. The ones for the AI are in `[AI]`:
 
 | Option | Default | Meaning |
 |---|---|---|
-| `enabled` | `true` | `false` = old Tesseract behaviour |
+| `enabled` | `true` | `false` goes back to the old Tesseract behaviour |
 | `model` | `qwen2.5vl:3b` | Ollama model |
-| `ollama_url` | `http://localhost:11434` | Ollama address |
+| `ollama_url` | `http://localhost:11434` | where Ollama listens |
 | `max_pages` | `2` | pages analysed per document |
-| `upload_guesses` | `false` | upload fields the model had to guess (see below) |
-| `save_json` | `true` | full AI result in `<logs>/ai/<id>.json` |
-| `max_failures` | `3` | failed analyses before a document goes to `_failed` |
+| `upload_guesses` | `false` | upload fields the model had to guess |
+| `save_json` | `true` | keep the full AI result per document |
+| `max_failures` | `3` | failed analyses before a document is moved to `_failed` |
 
-**Guessed fields.** When the model cannot read a field it makes a best
-estimate and lists it in `gegokt_velden`. WordPress has no field for "check
-this", so by default (`upload_guesses = false`) guesses are *not* uploaded and
-the field stays empty for the volunteers, as with the old backend.
+Behaviour worth knowing:
 
-**File names.** In the download step reviewed originals are renamed to
-`lastname_firstname_birthdate_deathdate.<ext>` (e.g.
-`ARDENOIS_Joseph_1923-02-06_2002-11-20.pdf`; unknown parts are `onbekend`).
-A division with its own `write` template in the `templates` table keeps using
-that template; this format is the default when there is none.
+- **Guesses.** When the model cannot read a field it makes a best estimate. By
+  default these are *not* uploaded (WordPress has no "check this" flag), so the
+  field stays empty for the volunteers, as with the old backend.
+- **File name first.** Data found in the file name wins; the AI only fills
+  fields that are still empty. Dates are validated, so an impossible year never
+  reaches WordPress.
+- **Ollama down.** Checked at the start of every upload cycle. If it does not
+  answer, uploads wait for the next cycle and no document is touched.
+- **Failing document.** After `max_failures` failed analyses it is moved to
+  `_failed`, which the backend skips.
+- The folders `_ignore`, `_corrupt` and `_failed` inside a division are skipped.
 
-**Ollama down.** Ollama is checked once at the start of every upload cycle.
-If it does not answer, that cycle's uploads are skipped and retried next
-cycle; documents stay where they are. A document that fails on its own
-`max_failures` times is moved to `_failed`.
+## Project layout
 
-## How the AI plugs in
-
-Per document, in `gs_processor.process_uploads`:
-
-1. render pages, build web image, parse the file name (unchanged);
-2. `gs_ai_tools.extract_with_ai()` replaces Tesseract + `get_name` +
-   `find_life_info`; it only fills fields still **empty** after the file
-   name, and validates dates with `validate_year/month/day`;
-3. face detection, note, gender, upload, downloads, Excel (unchanged).
-
-Details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
-## Project structure
-
-```
-gsw.py                 entry point (prep -> downloads -> uploads loop)
-check_setup.py         pre-flight check before running gsw.py
-config.default         configuration template   -> copy to `config`
-.env.example           credentials template     -> copy to `.env`
-requirements*.txt      dependencies (-dev adds pytest)
-backend/               the original backend (gs_*.py): WordPress, files, DB, Excel
-  gs_ai_tools.py       the bridge to the AI (the only AI-aware backend module)
-ai_extractor/          RapidOCR + Ollama extraction (independent of backend/)
-tools/test_pdf.py      try the AI on one PDF, no WordPress needed
-tests/                 pytest
-docs/                  ARCHITECTURE.md, GenScan_backend_IO.txt
+```text
+gsw.py              entry point
+check_setup.py      pre-flight check
+config.default      settings template      (copy to config)
+.env.example        credentials template   (copy to .env)
+backend/            the original backend (gs_*.py): WordPress, files, database, Excel
+ai_extractor/       the AI: RapidOCR + Ollama
+tools/test_pdf.py   try the AI on one PDF, no WordPress needed
+tests/              automated tests
+docs/               architecture and input/output reference
 ```
 
-Runtime folders (`werkmap/`, `logs/`, `*.db`, `.env`, `config`) are created
-locally and ignored by git.
+How the pieces fit together is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md);
+the exact inputs and outputs of the backend in
+[docs/GenScan_backend_IO.txt](docs/GenScan_backend_IO.txt).
 
-## Trying the AI on a single file (development)
-
-```bash
-python tools/test_pdf.py scan.pdf     # result in test_output/resultaat.json
-```
-
-Handy to tune prompts; not part of the production flow.
-
-## Tests
+## Development
 
 ```bash
 python -m pip install -r requirements-dev.txt
-python -m pytest tests
+python -m pytest tests                 # automated tests
+python tools/test_pdf.py scan.pdf      # AI on one file → test_output/resultaat.json
 ```
+
+Model instructions live in `ai_extractor/prompts.py`. To contribute, read
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Troubleshooting
 
-| Problem | Cause / fix |
+| Problem | Cause and fix |
 |---|---|
-| All documents skipped, no error | `system-status` endpoint does not answer; run `check_setup.py` |
-| `Ollama antwoordt niet` / `Model ... niet gevonden` | start `ollama serve`; `ollama pull <model>` |
-| `Script is already running` | stale `gsw.lock`; delete it if no instance runs |
-| Application passwords refused over HTTP | local WordPress needs `WP_ENVIRONMENT_TYPE=local` |
-| `No module named ...` | venv not active; `python -m pip install -r requirements.txt` |
-| Slow (minutes per document) | CPU only; use a GPU or a smaller `max_pages` |
-
-Logs: `<working_folder>/logs/gsw.log` and `ai_extractor.log`.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+| Every document is skipped, no error | the `system-status` endpoint does not answer; run `check_setup.py` |
+| HTTP 401 from WordPress | `WP_API` is not an application password, or the local site needs `WP_ENVIRONMENT_TYPE` set to `local` |
+| `Ollama antwoordt niet` | Ollama is not running: `ollama serve` |
+| `Model ... niet gevonden` | `ollama pull <model>` |
+| `Script is already running` | leftover `gsw.lock`; delete it if no other instance runs |
+| `No module named ...` | the venv is not active, or run `python -m pip install -r requirements.txt` |
+| A document takes minutes | normal on CPU; use a GPU or lower `max_pages` |
 
 ## Privacy
 
-Scans and OCR text stay local. `.gitignore` keeps `.env`, `config`, `*.db`,
-scan folders, logs and results out of git. Never commit production
-credentials.
+Scans and recognised text stay on your machine. `.gitignore` keeps `.env`,
+`config`, databases, the work folder and logs out of git. Never commit
+production credentials, and never run local tests against the production
+database or site.
