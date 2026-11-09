@@ -41,6 +41,7 @@ from gs_file_tools import (
     move_file,
 )
 from gs_helpers import (
+    build_default_file_name,
     clean_ocr_text,
     clean_up_text,
     convert_diacritics,
@@ -90,6 +91,24 @@ except ModuleNotFoundError:
 
 # Activate logger
 logger = logging.getLogger("gsw_logger")
+
+
+def set_unique_processed_name(obituary):
+    """
+    Name the document lastname_firstname_birthdate_deathdate.<ext>, adding
+    _2, _3... when that name is already taken in the processed folder.
+    This name is stored in WordPress, so the download step finds the file.
+    """
+    name = build_default_file_name(obituary)
+    base, extension = os.path.splitext(name)
+    processed_folder = os.path.join(
+        obituary.folder_name, gs_config.APP_CONFIG["processed_folder"]
+    )
+    counter = 1
+    while os.path.exists(os.path.join(processed_folder, name)):
+        counter += 1
+        name = f"{base}_{counter}{extension}"
+    obituary.new_file_name = name
 
 
 def print_info_results(info):
@@ -968,6 +987,9 @@ def process_uploads(web_session, db_session):
             # Set obituary priority
             set_obituary_priority_by_slug(obituary, db_session)
 
+            # Name the document after the deceased; WordPress stores this name
+            set_unique_processed_name(obituary)
+
             # Upload to website
             upload_status = process_upload(obituary, web_session)
 
@@ -991,7 +1013,7 @@ def process_uploads(web_session, db_session):
                         os.path.join(
                             obituary.folder_name,
                             gs_config.APP_CONFIG["processed_folder"],
-                            f"{obituary.obituary_id}.{file_extension}",
+                            obituary.new_file_name,
                         )
                     )
                     # copy_file(file_to_process, processed_file_path)

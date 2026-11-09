@@ -2291,17 +2291,10 @@ def _default_date_part(year, month, day):
     return "-".join(parts)
 
 
-def create_default_file_name(obituary_post):
+def build_default_file_name(obituary_post):
     """
-    Default file name when the division has no "write" template:
+    Build the default file name without changing the object:
       lastname_firstname_birthdate_deathdate.<original extension>
-    Unknown parts are written as "onbekend".
-
-    Parameters:
-      obituary_post: ObituaryPost object
-
-    Return:
-      obituary_post: updated ObituaryPost object
     """
     name = "_".join(
         (
@@ -2319,7 +2312,22 @@ def create_default_file_name(obituary_post):
             ),
         )
     )
-    obituary_post.new_file_name = name + os.path.splitext(obituary_post.file_name)[1]
+    return name + os.path.splitext(obituary_post.file_name)[1]
+
+
+def create_default_file_name(obituary_post):
+    """
+    Default file name when the division has no "write" template:
+      lastname_firstname_birthdate_deathdate.<original extension>
+    Unknown parts are written as "onbekend".
+
+    Parameters:
+      obituary_post: ObituaryPost object
+
+    Return:
+      obituary_post: updated ObituaryPost object
+    """
+    obituary_post.new_file_name = build_default_file_name(obituary_post)
 
     return obituary_post
 
